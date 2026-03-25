@@ -1,6 +1,6 @@
-name: Build dump1090-fa on push
+name: Build dump1090-fa
 
-on: push
+on: [ push, pull_request ]
 
 jobs:
   build:
