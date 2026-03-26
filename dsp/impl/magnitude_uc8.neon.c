@@ -10,95 +10,21 @@
 
 /* Convert UC8 values to unsigned 16-bit magnitudes */
 
-void STARCH_IMPL(magnitude_uc8, lookup) (const uc8_t *in, uint16_t *out, unsigned len)
-{
-    const uint16_t * const mag_table = get_uc8_mag_table();
-
-    const uc8_u16_t * restrict in_align = (const uc8_u16_t *) STARCH_ALIGNED(in);
-    uint16_t * restrict out_align = STARCH_ALIGNED(out);
-
-    unsigned len1 = len;
-    while (len1--) {
-        uint16_t mag = mag_table[in_align[0].u16];
-        out_align[0] = mag;
-
-        out_align += 1;
-        in_align += 1;
-    }
-}
-
-void STARCH_IMPL(magnitude_uc8, lookup_unroll_4) (const uc8_t *in, uint16_t *out, unsigned len)
-{
-    const uint16_t * const mag_table = get_uc8_mag_table();
-
-    const uc8_u16_t * restrict in_align = (const uc8_u16_t *) STARCH_ALIGNED(in);
-    uint16_t * restrict out_align = STARCH_ALIGNED(out);
-
-    unsigned len4 = len >> 2;
-    unsigned len1 = len & 3;
-
-    while (len4--) {
-        uint16_t mag0 = mag_table[in_align[0].u16];
-        uint16_t mag1 = mag_table[in_align[1].u16];
-        uint16_t mag2 = mag_table[in_align[2].u16];
-        uint16_t mag3 = mag_table[in_align[3].u16];
-
-        out_align[0] = mag0;
-        out_align[1] = mag1;
-        out_align[2] = mag2;
-        out_align[3] = mag3;
-
-        out_align += 4;
-        in_align += 4;
-    }
-
-    while (len1--) {
-        uint16_t mag = mag_table[in_align[0].u16];
-
-        out_align[0] = mag;
-
-        out_align += 1;
-        in_align += 1;
-    }
-}
-
-void STARCH_IMPL(magnitude_uc8, exact) (const uc8_t *in, uint16_t *out, unsigned len)
-{
-    const uc8_t * restrict in_align = STARCH_ALIGNED(in);
-    uint16_t * restrict out_align = STARCH_ALIGNED(out);
-
-    unsigned len1 = len;
-
-    while (len1--) {
-        float I = (in_align[0].I - 127.4);
-        float Q = (in_align[0].Q - 127.4);
-
-        float magsq = I * I + Q * Q;
-        float mag = sqrtf(magsq) * 65536.0 / 128.0;
-        if (mag > 65535.0)
-            mag = 65535.0;
-
-        out_align[0] = (uint16_t)mag;
-
-        in_align += 1;
-        out_align += 1;
-    }
-}
-
-#ifdef STARCH_FEATURE_NEON
+#ifndef __ARM_NEON
+#  error Neon support not available
+#endif
 
 #include <arm_neon.h>
 
-void STARCH_IMPL_REQUIRES(magnitude_uc8, neon_vrsqrte, STARCH_FEATURE_NEON) (const uc8_t *in, uint16_t *out, unsigned len)
+void STARCH_IMPL(magnitude_uc8, neon_vrsqrte) (const uc8_t * restrict in, uint16_t * restrict out, unsigned len)
 {
-    const uint8_t * restrict in_align = (const uint8_t *) STARCH_ALIGNED(in);
-    uint16_t * restrict out_align = STARCH_ALIGNED(out);
-
+    const uint8_t * restrict in_u8 = (const uint8_t *)in;
+    
     const uint16x8_t offset = vdupq_n_u16((uint16_t) (127.4 * 256));
 
     unsigned len8 = len >> 3;
     while (len8--) {
-        uint8x8x2_t iq = vld2_u8(in_align);
+        uint8x8x2_t iq = vld2_u8(in_u8);
 
         // widen to 16 bits, convert to signed
         uint16x8_t i_u16 = vshll_n_u8(iq.val[0], 8);
@@ -128,15 +54,15 @@ void STARCH_IMPL_REQUIRES(magnitude_uc8, neon_vrsqrte, STARCH_FEATURE_NEON) (con
 
         // store
         uint16x8_t result = vcombine_u16(mag_u16_low, mag_u16_high);
-        vst1q_u16(out_align, result);
+        vst1q_u16(out, result);
 
-        in_align += 16;
-        out_align += 8;
+        in_u8 += 16;
+        out += 8;
     }
 
     unsigned len1 = len & 7;
     while (len1--) {
-        uint8x8x2_t iq = vld2_dup_u8(in_align);
+        uint8x8x2_t iq = vld2_dup_u8(in_u8);
 
         // widen to 16 bits, convert to signed
         uint16x8_t i_u16 = vshll_n_u8(iq.val[0], 8);
@@ -155,11 +81,9 @@ void STARCH_IMPL_REQUIRES(magnitude_uc8, neon_vrsqrte, STARCH_FEATURE_NEON) (con
         uint16x4_t mag_u16_low = vqmovn_u32(vcvtq_n_u32_f32(mag_f32_low, 16));
 
         // store 1 lane only
-        vst1_lane_u16(out_align, mag_u16_low, 0);
+        vst1_lane_u16(out, mag_u16_low, 0);
 
-        in_align += 2;
-        out_align += 1;
+        in_u8 += 2;
+        out += 1;
     }
 }
-
-#endif /* STARCH_FEATURE_NEON */

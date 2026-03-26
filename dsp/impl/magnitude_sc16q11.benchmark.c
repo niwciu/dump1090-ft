@@ -8,9 +8,9 @@ void STARCH_BENCHMARK(magnitude_sc16q11) (void)
     uint16_t *out_mag = NULL;
     const unsigned len = 65536;
 
-    if (!(in = STARCH_BENCHMARK_ALLOC(len, sc16_t)) || !(out_mag = STARCH_BENCHMARK_ALLOC(len, uint16_t))) {
+    if (!(in = calloc(len, sizeof(*in))) ||
+        !(out_mag = calloc(len, sizeof(*out_mag))))
         goto done;
-    }
 
     unsigned i = 0;
 
@@ -44,8 +44,8 @@ void STARCH_BENCHMARK(magnitude_sc16q11) (void)
     STARCH_BENCHMARK_RUN( magnitude_sc16q11, in, out_mag, len );
 
  done:
-    STARCH_BENCHMARK_FREE(in);
-    STARCH_BENCHMARK_FREE(out_mag);
+    free(in);
+    free(out_mag);
 }
 
 bool STARCH_BENCHMARK_VERIFY(magnitude_sc16q11) (const sc16_t *in, uint16_t *out, unsigned len)

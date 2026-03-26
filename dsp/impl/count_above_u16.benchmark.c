@@ -6,9 +6,8 @@ void STARCH_BENCHMARK(count_above_u16) (void)
     const unsigned len = 96; /* Typical use is with short burst windows (40us) */
     const unsigned threshold = 46395; /* -3dBFS */
 
-    if (!(in = STARCH_BENCHMARK_ALLOC(len, uint16_t))) {
+    if (!(in = calloc(len, sizeof(*in))))
         goto done;
-    }
 
     srand(1);
     for (unsigned i = 0; i < len; ++i) {
@@ -19,7 +18,7 @@ void STARCH_BENCHMARK(count_above_u16) (void)
     STARCH_BENCHMARK_RUN( count_above_u16, in, len, threshold, &count );
 
  done:
-    STARCH_BENCHMARK_FREE(in);
+    free(in);
 }
 
 bool STARCH_BENCHMARK_VERIFY(count_above_u16) (const uint16_t *in, unsigned len, uint16_t threshold, unsigned *out_count)    

@@ -1,15 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
-void STARCH_BENCHMARK(magnitude_uc8) (void)
+void STARCH_BENCHMARK(magnitude_power_uc8) (void)
 {
     uc8_t *in = NULL;
     uint16_t *out_mag = NULL;
     const unsigned len = 65536;
+    double out_level, out_power;
 
-    if (!(in = STARCH_BENCHMARK_ALLOC(len, uc8_t)) || !(out_mag = STARCH_BENCHMARK_ALLOC(len, uint16_t))) {
+    if (!(in = calloc(len, sizeof(*in))) ||
+        !(out_mag = calloc(len, sizeof(*out_mag))))
         goto done;
-    }
 
     unsigned i = 0;
 
@@ -40,18 +42,20 @@ void STARCH_BENCHMARK(magnitude_uc8) (void)
         in[i].Q = rand() % 256;
     }
 
-    STARCH_BENCHMARK_RUN( magnitude_uc8, in, out_mag, len );
+    STARCH_BENCHMARK_RUN( magnitude_power_uc8, in, out_mag, len, &out_level, &out_power );
 
  done:
-    STARCH_BENCHMARK_FREE(in);
-    STARCH_BENCHMARK_FREE(out_mag);
+    free(in);
+    free(out_mag);
 }
 
-bool STARCH_BENCHMARK_VERIFY(magnitude_uc8) (const uc8_t *in, uint16_t *out, unsigned len)
+bool STARCH_BENCHMARK_VERIFY(magnitude_power_uc8) (const uc8_t *in, uint16_t *out, unsigned len, double *out_level, double *out_power)
 {
     const double max_error = 0.015; // tolerate 1.5% error
-    const double epsilon = 3.0;
+    const double epsilon = 1.0;
     bool okay = true;
+
+    double sum_level = 0, sum_power = 0;
 
     for (unsigned i = 0; i < len; ++i) {
         double I = (in[i].I - 127.4) / 128;
@@ -73,6 +77,26 @@ bool STARCH_BENCHMARK_VERIFY(magnitude_uc8) (const uc8_t *in, uint16_t *out, uns
                     error_fraction * 100.0);
             okay = false;
         }
+
+        sum_level += expected;
+        sum_power += expected * expected;
+    }
+
+    sum_level = sum_level / len / 65536.0;
+    sum_power = sum_power / len / (65536.0 * 65536.0);
+
+    double level_error = sum_level - *out_level;
+    if (fabs(level_error / sum_level) > max_error) {
+        fprintf(stderr, "verification failed: expected mean level %.5f, got mean level %.5f, error=%.2f%%\n",
+                sum_level, *out_level, 100.0 * level_error / sum_level);
+        okay = false;
+    }
+
+    double power_error = sum_power - *out_power;
+    if (fabs(power_error / sum_power) > max_error) {
+        fprintf(stderr, "verification failed: expected mean power %.5f, got mean power %.5f, error=%.2f%%\n",
+                sum_power, *out_power, 100.0 * power_error / sum_power);
+        okay = false;
     }
 
     return okay;

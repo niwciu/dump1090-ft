@@ -6,9 +6,8 @@ void STARCH_BENCHMARK(mean_power_u16) (void)
     double mean_mag, mean_magsq;
     const unsigned len = 65536;
 
-    if (!(in = STARCH_BENCHMARK_ALLOC(len, uint16_t))) {
+    if (!(in = calloc(len, sizeof(*in))))
         goto done;
-    }
 
     for (unsigned i = 0; i < len; ++i) {
         in[i] = i;
@@ -17,7 +16,7 @@ void STARCH_BENCHMARK(mean_power_u16) (void)
     STARCH_BENCHMARK_RUN( mean_power_u16, in, len, &mean_mag, &mean_magsq );
 
  done:
-    STARCH_BENCHMARK_FREE(in);
+    free(in);
 }
 
 bool STARCH_BENCHMARK_VERIFY(mean_power_u16) (const uint16_t *in, unsigned len, double *out_mag, double *out_magsq)
