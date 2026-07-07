@@ -91,6 +91,15 @@ var checkbox_div_map = new Map ([
 
 ]);
 
+function isEmbeddedMapMode() {
+        try {
+                var params = new URLSearchParams(window.location.search || "");
+                return params.get('embedded') === '1';
+        } catch (_err) {
+                return false;
+        }
+}
+
 var DefaultMinMaxFilters = {
         'nautical': {min: 0, maxSpeed: 1000, maxAltitude: 65000},       // kt, ft
         'metric' : {min: 0, maxSpeed: 1000, maxAltitude: 20000},        // km/h, m
@@ -281,6 +290,19 @@ function initialize() {
         setStatsLink();
 
         PlaneRowTemplate = document.getElementById("plane_row_template");
+
+        if (isEmbeddedMapMode()) {
+                // Embedded Plane Tracker maps should open as a fresh live-traffic view,
+                // not with stale SkyAware filters from a previous standalone session.
+                localStorage.setItem('sourceADSBFilter', 'selected');
+                localStorage.setItem('sourceUATFilter', 'selected');
+                localStorage.setItem('sourceMLATFilter', 'selected');
+                localStorage.setItem('sourceOtherFilter', 'selected');
+                localStorage.setItem('filterEmergency', 'deselected');
+                localStorage.setItem('altitudeFilter', 'deselected');
+                localStorage.setItem('speedFilter', 'deselected');
+                localStorage.setItem('distanceFilter', 'deselected');
+        }
 
         refreshClock();
 
@@ -1023,6 +1045,10 @@ function initialize_map() {
 
         if (baseCount > 1) {
             OLMap.addControl(new ol.control.LayerSwitcher());
+        }
+
+        if (typeof initAlertZones === 'function') {
+                initAlertZones();
         }
 
 	// Listeners for newly created Map

@@ -130,3 +130,8 @@ DefaultMaxAltitudeFilter = 65000
 DefaultMinAltitudeFilter = 0
 DefaultMaxSpeedFilter = 1000
 DefaultMinSpeedFilter = 0
+
+// Plane Tracker integration for optional map-side features such as Alert Zones.
+// When this map is served through Plane Tracker's /dump-map bridge, same-origin
+// is correct. If you host the map elsewhere, point this at the Plane Tracker app.
+PlaneTrackerURL = window.location.origin;
