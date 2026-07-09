@@ -17,6 +17,14 @@ var FollowSelected = false;
 var infoBoxOriginalPosition = {};
 var customAltitudeColors = true;
 var myAdsbStatsSiteUrl = null;
+var PlaneTrackerTrackingState = {
+        active: false,
+        icao: null,
+        loading: false,
+        lastError: null
+};
+var PlaneTrackerTrackingPoll = null;
+var PlaneTrackerStaleWarningAgeS = 2.5;
 
 var ADSB_Enabled = true;
 var UAT_Enabled = false;
@@ -370,6 +378,8 @@ function initialize() {
         $("#toggle_sidebar_button").click(toggleSidebarVisibility);
         $("#expand_sidebar_button").click(expandSidebar);
         $("#show_map_button").click(showMap);
+        $("#selected_plane_tracker_track").click(planeTrackerToggleSelectedTracking);
+        planeTrackerStartStatusPolling();
 
         // Set initial element visibility
         $("#show_map_button").hide();
@@ -1326,6 +1336,172 @@ function refreshPageTitle() {
         document.title = '(' + aircraftCount + ') ' + PageName + rate;
 }
 
+function planeTrackerBaseURL() {
+        var base = (typeof PlaneTrackerURL !== 'undefined' && PlaneTrackerURL) ? PlaneTrackerURL : window.location.origin;
+        return base.replace(/\/+$/, '');
+}
+
+function planeTrackerAPI(path) {
+        return planeTrackerBaseURL() + '/api' + path;
+}
+
+function planeTrackerSelectedPlane() {
+        if (typeof SelectedPlane === 'undefined' || SelectedPlane === null || SelectedPlane === "ICAO") {
+                return null;
+        }
+        return Planes[SelectedPlane] || null;
+}
+
+function planeTrackerNormalizeICAO(icao) {
+        return (icao || '').toString().trim().toLowerCase();
+}
+
+function planeTrackerSetStatus(text, stateClass) {
+        var status = $('#selected_plane_tracker_status');
+        status.removeClass('plane-tracker-ok plane-tracker-warn plane-tracker-error');
+        if (stateClass) {
+                status.addClass(stateClass);
+        }
+        status.text(text || '');
+        status.toggle(!!text);
+}
+
+function planeTrackerRefreshSelectedControls() {
+        var selected = planeTrackerSelectedPlane();
+        var button = $('#selected_plane_tracker_track');
+        var selectedIcao = selected ? planeTrackerNormalizeICAO(selected.icao) : null;
+        var activeIcao = planeTrackerNormalizeICAO(PlaneTrackerTrackingState.icao);
+
+        if (!button.length) {
+                return;
+        }
+
+        button.toggle(!!selectedIcao);
+        button.prop('disabled', PlaneTrackerTrackingState.loading || !selectedIcao);
+        button.removeClass('plane-tracker-action-track plane-tracker-action-stop');
+
+        if (!selectedIcao) {
+                button.text('Track');
+                planeTrackerSetStatus('', null);
+                return;
+        }
+
+        if (PlaneTrackerTrackingState.loading) {
+                button.text('Working...');
+                return;
+        }
+
+        if (PlaneTrackerTrackingState.active && activeIcao === selectedIcao) {
+                button.addClass('plane-tracker-action-stop');
+                button.text('Stop');
+                planeTrackerSetStatus('Tracking', 'plane-tracker-ok');
+                return;
+        }
+
+        button.addClass('plane-tracker-action-track');
+        button.text('Track');
+        if (PlaneTrackerTrackingState.active && activeIcao) {
+                planeTrackerSetStatus('Tracking ' + activeIcao.toUpperCase(), 'plane-tracker-warn');
+        } else if (PlaneTrackerTrackingState.lastError) {
+                planeTrackerSetStatus(PlaneTrackerTrackingState.lastError, 'plane-tracker-error');
+        } else {
+                planeTrackerSetStatus('', null);
+        }
+}
+
+function planeTrackerRequest(method, path, data, successMessage) {
+        PlaneTrackerTrackingState.loading = true;
+        PlaneTrackerTrackingState.lastError = null;
+        planeTrackerRefreshSelectedControls();
+
+        return $.ajax({
+                url: planeTrackerAPI(path),
+                method: method,
+                data: data ? JSON.stringify(data) : undefined,
+                contentType: data ? 'application/json' : undefined,
+                dataType: 'json',
+                timeout: 8000
+        }).done(function(response) {
+                if (response && response.error) {
+                        PlaneTrackerTrackingState.lastError = response.error;
+                } else if (successMessage) {
+                        PlaneTrackerTrackingState.lastError = null;
+                        planeTrackerSetStatus(successMessage, 'plane-tracker-ok');
+                }
+        }).fail(function(xhr, textStatus) {
+                var error = textStatus || 'request failed';
+                if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                        error = xhr.responseJSON.error;
+                } else if (xhr && xhr.responseText) {
+                        error = xhr.responseText.substring(0, 120);
+                }
+                PlaneTrackerTrackingState.lastError = error;
+        }).always(function() {
+                PlaneTrackerTrackingState.loading = false;
+                planeTrackerPollTrackingStatus();
+                planeTrackerRefreshSelectedControls();
+        });
+}
+
+function planeTrackerToggleSelectedTracking() {
+        var selected = planeTrackerSelectedPlane();
+        if (!selected || !selected.icao) {
+                PlaneTrackerTrackingState.lastError = 'Select an aircraft first';
+                planeTrackerRefreshSelectedControls();
+                return;
+        }
+
+        var selectedIcao = planeTrackerNormalizeICAO(selected.icao);
+        var activeIcao = planeTrackerNormalizeICAO(PlaneTrackerTrackingState.icao);
+
+        if (PlaneTrackerTrackingState.active && activeIcao === selectedIcao) {
+                planeTrackerRequest('POST', '/tracking/stop', null, 'Tracking stopped');
+                return;
+        }
+
+        if (selected.seen_pos == null || selected.position === null) {
+                if (!window.confirm('Selected aircraft has no fresh ADS-B position fix. Try to start tracking anyway?')) {
+                        return;
+                }
+        } else if (selected.seen_pos > PlaneTrackerStaleWarningAgeS) {
+                if (!window.confirm('Selected aircraft ADS-B position is ' + selected.seen_pos.toFixed(1) + 's old. Tracking startup may fail or slew to an old position. Start anyway?')) {
+                        return;
+                }
+        }
+
+        planeTrackerRequest('POST', '/tracking/start', { icao: selectedIcao }, 'Tracking started');
+}
+
+function planeTrackerPollTrackingStatus() {
+        return $.ajax({
+                url: planeTrackerAPI('/tracking/status'),
+                method: 'GET',
+                dataType: 'json',
+                timeout: 5000
+        }).done(function(status) {
+                PlaneTrackerTrackingState.active = !!(status && status.active);
+                PlaneTrackerTrackingState.icao = status && status.icao ? status.icao : null;
+                if (!PlaneTrackerTrackingState.active) {
+                        PlaneTrackerTrackingState.icao = null;
+                }
+                PlaneTrackerTrackingState.lastError = null;
+        }).fail(function() {
+                PlaneTrackerTrackingState.active = false;
+                PlaneTrackerTrackingState.icao = null;
+                PlaneTrackerTrackingState.lastError = 'Plane Tracker API unavailable';
+        }).always(function() {
+                planeTrackerRefreshSelectedControls();
+        });
+}
+
+function planeTrackerStartStatusPolling() {
+        if (PlaneTrackerTrackingPoll !== null) {
+                return;
+        }
+        planeTrackerPollTrackingStatus();
+        PlaneTrackerTrackingPoll = window.setInterval(planeTrackerPollTrackingStatus, 2000);
+}
+
 // Refresh the detail window about the plane
 function refreshSelected() {
         updateMessageRates();
@@ -1368,6 +1544,7 @@ function refreshSelected() {
         setSelectedInfoBlockVisibility();
 
         if (!selected) {
+                planeTrackerRefreshSelectedControls();
                 return;
         }
       
@@ -1452,6 +1629,8 @@ function refreshSelected() {
                         $('#selected_follow').css('font-weight', 'normal');
                 }
         }
+
+        planeTrackerRefreshSelectedControls();
 
         var datasource = selected.getDataSource();
         if (datasource === "uat") {

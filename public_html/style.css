@@ -10,6 +10,30 @@ body {
     height: 100%;
 }
 
+* {
+    scrollbar-width: auto;
+    scrollbar-color: #65819e #e7edf3;
+}
+
+::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+::-webkit-scrollbar-track {
+    background: #e7edf3;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #65819e;
+    border: 3px solid #e7edf3;
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #42617f;
+}
+
 #layout_container {
     display: flex;
     height: calc(100% - 60px);
@@ -27,11 +51,13 @@ body {
 .infoblock-container {
     overflow: scroll;
     height: 100%;
+    overscroll-behavior: contain;
 }
 
 #sidebar_canvas {
     padding: 10px;
     overflow: auto;
+    overscroll-behavior: contain;
 }
 
 #sidebar_container {
@@ -775,6 +801,66 @@ input.error {
     display: inline-block;
     cursor: pointer;
     text-align: center;
+}
+
+.plane-tracker-action {
+    border: 0;
+    border-radius: 4px;
+    color: #ffffff;
+    cursor: pointer;
+    float: right;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    min-height: 28px;
+    margin-right: 8px;
+    margin-top: 10px;
+    min-width: 62px;
+    padding: 0 10px;
+}
+
+.plane-tracker-action-track {
+    background: #1f9d55;
+}
+
+.plane-tracker-action-stop {
+    background: #c0392b;
+}
+
+.plane-tracker-action-stop::before {
+    content: "\25A0";
+    display: inline-block;
+    font-size: 9px;
+    line-height: 1;
+    margin-right: 5px;
+    vertical-align: 1px;
+}
+
+.plane-tracker-action:disabled {
+    background: #9ab5c8;
+    cursor: not-allowed;
+}
+
+.plane-tracker-status {
+    display: none;
+    float: right;
+    line-height: 28px;
+    margin-right: 8px;
+    margin-top: 10px;
+    max-width: 270px;
+    vertical-align: middle;
+}
+
+.plane-tracker-ok {
+    color: #16723a;
+}
+
+.plane-tracker-warn {
+    color: #9b6500;
+}
+
+.plane-tracker-error {
+    color: #b3261e;
 }
 
 .lightblue-link,
