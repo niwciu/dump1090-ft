@@ -2663,7 +2663,7 @@ function getFlightAwareIdentLink(ident, linkText) {
         if (!linkText) {
             linkText = ident;
         }
-        return "<a target=\"_blank\" href=\"https://flightaware.com/live/flight/" + ident.trim() + "\"><span title=\"Bold ident indicates this is an aircraft registration number\"> " + linkText + "</span></a>";
+        return "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://flightaware.com/live/flight/" + ident.trim() + "\"><span title=\"Bold ident indicates this is an aircraft registration number\"> " + linkText + "</span></a>";
     }
 
     return "";
@@ -2675,7 +2675,7 @@ function getFlightAwareModeSLink(code, ident, linkText) {
             linkText = "FlightAware: " + code.toUpperCase();
         }
 
-        var linkHtml = "<a target=\"_blank\" href=\"https://flightaware.com/live/modes/" + code ;
+        var linkHtml = "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://flightaware.com/live/modes/" + code ;
         if (ident !== null && ident !== "") {
             linkHtml += "/ident/" + ident.trim();
         }
@@ -2688,7 +2688,7 @@ function getFlightAwareModeSLink(code, ident, linkText) {
 
 function getFlightAwarePhotoLink(registration) {
     if (registration !== null && registration !== "") {
-        return "<a target=\"_blank\" href=\"https://flightaware.com/photos/aircraft/" + registration.replace(/[^0-9a-z]/ig,'') + "\">See Photos</a>";
+        return "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://flightaware.com/photos/aircraft/" + registration.replace(/[^0-9a-z]/ig,'') + "\">See Photos</a>";
     }
 
     return "";   
