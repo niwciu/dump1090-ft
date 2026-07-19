@@ -27,7 +27,6 @@ DefaultCenterLat = 45.0;
 DefaultCenterLon = 9.0;
 // The google maps zoom level, 0 - 16, lower is further out
 DefaultZoomLvl   = 7;
-DefaultMapType   = "esri_street";
 
 // Center marker. If dump1090 provides a receiver location,
 // that location is used and these settings are ignored.

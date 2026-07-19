@@ -812,13 +812,11 @@ input.error {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 12px;
     font-weight: bold;
-    height: 28px;
-    line-height: 28px;
+    min-height: 28px;
     margin-right: 8px;
     margin-top: 10px;
     min-width: 62px;
     padding: 0 10px;
-    box-sizing: border-box;
 }
 
 .plane-tracker-action-track {
@@ -1175,18 +1173,11 @@ label.sourceCheckboxChecked div.sourceCheckbox {
     background-color: #00a0e2;
     color: white;
     text-decoration: none;
-    display: inline-block;
-    height: 28px;
-    line-height: 28px;
-    padding: 0 10px;
+    padding: 10px;
     border-radius: 4px;
     float: right;
     margin-right: 25px;
     margin-top: 10px;
-    box-sizing: border-box;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 12px;
-    font-weight: bold;
 }
 
 .bottom-info-container {

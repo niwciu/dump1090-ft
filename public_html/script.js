@@ -924,10 +924,7 @@ function initialize_map() {
         CenterLat = Number(localStorage['CenterLat']) || DefaultCenterLat;
         CenterLon = Number(localStorage['CenterLon']) || DefaultCenterLon;
         ZoomLvl = Number(localStorage['ZoomLvl']) || DefaultZoomLvl;
-        MapType = localStorage['MapType'] || (typeof DefaultMapType !== 'undefined' ? DefaultMapType : null);
-        if (isEmbeddedMapMode() && MapType === 'osm' && typeof DefaultMapType !== 'undefined') {
-                MapType = localStorage['MapType'] = DefaultMapType;
-        }
+        MapType = localStorage['MapType'];
         var groupByDataTypeBox = localStorage.getItem('groupByDataType');
 
         // Set SitePosition, initialize sorting
